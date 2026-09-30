@@ -1,26 +1,23 @@
-import os
-from tools.market_data import get_financial_metrics
-from tools.indicators import calculate_sma
-from core.react_loop import FinancialAgentCore
-
-from dotenv import load_dotenv
-
-# Register available tools
-TOOLS_REGISTRY = {
-    "get_financial_metrics": get_financial_metrics,
-    "calculate_sma": calculate_sma
-}
+import random
+from src.simulation.engine.FactorySimulation import FactorySimulation
+from src.simulation.event.Event import Event
+from src.simulation.event.EventType import EventType
 
 def main():
     # Initialize Agent Core
-    agent = FinancialAgentCore(tools_dict=TOOLS_REGISTRY)
-
-    # Sample query
-    query = "Check financial metrics for NVDA stock, calculate its 20-day SMA, and provide a short trend assessment."
-    report = agent.run(query)
-    
-    print(report)
+    print("Hello Agent! 2026 I'm here in Taiwan to get the permanent success.")
 
 if __name__ == "__main__":
-    load_dotenv()
+
     main()
+    
+    random.seed(42)
+
+    factory = FactorySimulation(num_machines=2)
+
+    for i in range(1, 6):
+        arrival_time = i * 4.0
+        target_machine = (i % 2) 
+        factory.queue.push(Event(time=arrival_time, event_type=EventType.JOB_ARRIVAL, machine_id=target_machine, job_id=100+i))
+
+    factory.run(max_sim_time=60.0)
