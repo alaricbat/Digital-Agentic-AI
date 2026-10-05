@@ -18,21 +18,23 @@ class ProductionAsset(Lifecycle):
                  pwf: int,
                  osf: int,
                  rnf: int):
-        super().__init__(type=type, 
-                         tool_wear=tool_wear,
-                        failure_modes={
-                            FailureMode.TWF: twf,
-                            FailureMode.HDF: hdf,
-                            FailureMode.PWF: pwf,
-                            FailureMode.OSF: osf,
-                            FailureMode.RNF: rnf
-                        })
+        super().__init__(
+            type=type, 
+            tool_wear=tool_wear,
+            failure_modes={
+                FailureMode.TWF: twf,
+                FailureMode.HDF: hdf,
+                FailureMode.PWF: pwf,
+                FailureMode.OSF: osf,
+                FailureMode.RNF: rnf
+            },
+            air_temp=air_temp,
+            process_temp=process_temp,
+            rotational_speed=rotational_speed,
+            torque=torque
+            )
         self.__udi = udi
         self.__product_id = product_id
-        self.__air_temp = air_temp
-        self.__process_temp = process_temp
-        self.___rotational_speed = rotational_speed
-        self.___torque = torque
-        self.___machine_failure = machine_failure
+        self.__machine_failure = machine_failure
         self.log = "設備初始化成功"
         
