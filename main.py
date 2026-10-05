@@ -3,13 +3,9 @@ import random
 import pandas as pd
 import numpy as np
 
-from src.simulation.engine.FactorySimulation import FactorySimulation
-from src.simulation.event.Event import Event
-from src.simulation.event.EventType import EventType
-
 from src.simulation.entities.ProductionAsset import ProductionAsset
 
-DEVICE_SZ = 10
+DEVICE_SZ = 5
 
 def main():
     # Initialize Agent Core
@@ -18,17 +14,6 @@ def main():
 if __name__ == "__main__":
 
     main()
-    
-    # random.seed(42)
-
-    # factory = FactorySimulation(num_machines=2)
-
-    # for i in range(1, 6):
-    #     arrival_time = i * 4.0
-    #     target_machine = (i % 2) 
-    #     factory.queue.push(Event(time=arrival_time, event_type=EventType.JOB_ARRIVAL, machine_id=target_machine, job_id=100+i))
-
-    # factory.run(max_sim_time=60.0)
 
     df = pd.read_csv('data/raw/ai4i2020.csv')
     df_filtered_products = df.iloc[:DEVICE_SZ, :].to_dict('records')
@@ -51,4 +36,6 @@ if __name__ == "__main__":
         )
         for product in df_filtered_products
     ]
-    print(len(asset_products))
+
+    for assets in asset_products:
+        assets.start()

@@ -19,8 +19,10 @@ class ProductionAsset(Lifecycle):
                  osf: int,
                  rnf: int):
         super().__init__(
+            product_id=product_id,
             type=type, 
             tool_wear=tool_wear,
+            machine_failure=machine_failure,
             failure_modes={
                 FailureMode.TWF: twf,
                 FailureMode.HDF: hdf,
@@ -34,7 +36,5 @@ class ProductionAsset(Lifecycle):
             torque=torque
             )
         self.__udi = udi
-        self.__product_id = product_id
-        self.__machine_failure = machine_failure
         self.log = "設備初始化成功"
         
