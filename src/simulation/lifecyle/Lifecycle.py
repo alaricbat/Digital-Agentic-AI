@@ -1,14 +1,22 @@
+import os
+import csv
+
 import time
 import random
 import numpy as np
 import threading
+import queue
+
+import lightgbm as lgb
 
 from src.simulation.state.FailureMode import FailureMode
 from src.simulation.entities.ProductType import ProductType
 from src.simulation.lifecyle.LifecycleBehavior import LifeCycleBehavior
 from src.utils.Writer import Writer
 
-class Lifecycle(LifeCycleBehavior, threading.Thread):
+from src.simulation.ml.AIModule import AIModule
+
+class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
     def __init__(self,
                  product_id: str, 
@@ -25,6 +33,15 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
         threading.Thread.__init__(self)
 
         self.__file_root_log = "src/simulation/logs/"
+        self.__lgb_model = None
+
+        try:
+            self.__lgb_model = lgb.Booster(model_file='src/ml_dl/model/lgb_model.txt')
+            print(f"🤖 [AI SYSTEM]: 集成AI - LightBGM 成功！")
+        except Exception as e:
+            print(f"⚠️ [AI SYSTEM ERROR]: AI 集成失敗！看一下 {e}")
+            self.__lgb_model = None
+
 
         self._product_id = product_id
         self._type = ProductType(type)
@@ -72,20 +89,10 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
     def update_twf(self):
         super().update_twf()
 
-        if self._type == ProductType.LOW:
-             # Low 等級每秒老化 3 分鐘，極速逼近危險區
-            self._tool_wear += 3
-        elif self._type == ProductType.MEDIUM:
-            # Medium 等級每秒老化 2 分鐘
-            self._tool_wear += 2 
-        elif self._type == ProductType.HIGH:
-            # High 等級最耐磨，每秒僅老化 1 分鐘
-            self._tool_wear += 1
-
         if self._tool_wear < 200:
             self._failure_modes["TWF"] = 0
             self.__writer.write(f"🟢 [NORMAL]: 刀具正常運轉中 | 累積磨損: {self._tool_wear} 分鐘")
-            self.__writer.write("🟢 [NORMAL]: 刀具處於健康或正常的消耗階段，累計加工時間（Tool Wear）在安全壽命範圍內（未達變換閾值）。")
+            self.__writer.write(f"🟢 [NORMAL]: 刀具處於健康或正常的消耗階段，累計加工時間（Tool Wear）在安全壽命範圍內（未達變換閾值）。")
         elif 200 <= self._tool_wear <= 240:
             if self._type == ProductType.LOW:
                  # 3.5% 高風險
@@ -108,18 +115,13 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
 
         elif self._tool_wear > 240:
             # 在此狀態下，TWF機率不再適用（因為沒在40分鐘內斷裂），但刀具已經徹底鈍化
-            self.__writer.write(f"⚡ 嚴重超期服役！[{self._type}級] 累積磨損已達 {self._tool_wear} 分鐘！隨機崩潰風險極高！")
-
+            self.__writer.write(f"🚨 [CRITICAL]: 嚴重超期服役！[{self._type}級] 累積磨損已達 {self._tool_wear} 分鐘！隨機崩潰風險極高！")
 
 
     def update_hdf(self):
 
         super().update_hdf()
 
-        # 運行中每秒的物理數值失落更新
-        self._rotational_speed -= self.__speed_drop_per_sec
-        # 製程溫度往環境溫度附近 （代表散熱不及，溫差正常縮小）
-        self._process_temp -= self.__process_temp_drop_rate
         temp_diff = self._process_temp - self._air_temp
         is_hdf = (temp_diff < 8.6) and (self._rotational_speed < 1380)
         is_warning = (temp_diff < self.__warn_temp_diff) and (self._rotational_speed < self.__warn_rotational_speed)
@@ -139,8 +141,6 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
     def update_pwf(self):
 
         super().update_pwf()
-
-        self._torque += self.__torque_rise
 
         current_power = self._torque * ((self._rotational_speed * 2 * np.pi) / 60.0)
 
@@ -212,6 +212,44 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
 
         while self._is_running:
 
+            csv_file_path = f"data/operating/{self._product_id}_data.csv"
+            csv_headers = [
+                "Timestamp",
+                "ProductID",
+                "Type",
+                "Air_Tempurature",
+                "Process_Tempurature",
+                "Rotational_Speed",
+                "Torque",
+                "Tool_wear",
+                "Machine_failure",
+                "TWF",
+                "HDF",
+                "PWF",
+                "OSF",
+                "RNF"
+            ]
+            file_is_new = not os.path.exists(csv_file_path)
+
+            prob = self._predict_with_lgb(self._extract_ml_feature())
+            if prob >= 0.65:
+                self.__writer.write(f"🔮 [AI PREDICTIVE WARNING]: 設備運行異常，請早修改！")
+            
+            # 運行中每秒的物理數值失落更新
+            self._rotational_speed -= self.__speed_drop_per_sec
+            # 製程溫度往環境溫度附近 （代表散熱不及，溫差正常縮小）
+            self._process_temp -= self.__process_temp_drop_rate
+            self._torque += self.__torque_rise
+            if self._type == ProductType.LOW:
+                # Low 等級每秒老化 3 分鐘，極速逼近危險區
+                self._tool_wear += 3
+            elif self._type == ProductType.MEDIUM:
+                # Medium 等級每秒老化 2 分鐘
+                self._tool_wear += 2 
+            elif self._type == ProductType.HIGH:
+                # High 等級最耐磨，每秒僅老化 1 分鐘
+                self._tool_wear += 1
+
             self.update_twf()
 
             self.update_hdf()
@@ -221,6 +259,31 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
             self.update_pwf()
 
             self.update_rnf()
+
+            with open(csv_file_path, mode='a', newline='', encoding='utf-8') as csv_file:
+                writer = csv.writer(csv_file)
+
+                if file_is_new:
+                    writer.writerow(csv_headers)
+
+                data_row = [
+                    time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                    self._product_id,
+                    self._type.value,
+                    self._air_temp,
+                    self._process_temp,
+                    self._rotational_speed,
+                    self._torque,
+                    self._tool_wear,
+                    self._machine_failure,
+                    self._failure_modes[FailureMode.TWF],
+                    self._failure_modes[FailureMode.HDF],
+                    self._failure_modes[FailureMode.PWF],
+                    self._failure_modes[FailureMode.OSF],
+                    self._failure_modes[FailureMode.RNF]
+                ]
+                writer.writerow(data_row)
+                csv_file.flush()
 
             if self.is_machine_failure():
                 self.__writer.write("🛑 設備已宣告損壞，自動終止後台更新執行緒。")
@@ -232,6 +295,46 @@ class Lifecycle(LifeCycleBehavior, threading.Thread):
 
     def stop(self):
         self._is_running = False
+
+    def _extract_ml_feature(self):
+
+        type_numeric = 0
+        
+        if self._type == ProductType.LOW:
+            type_numeric = 1
+        elif self._type == ProductType.MEDIUM:
+            type_numeric = 2
+        elif self._type == ProductType.HIGH:
+            type_numeric = 3
+
+        temp_diff = self._process_temp - self._air_temp
+        power = self._torque * ((self._rotational_speed * 2 * np.pi) / 60.0)
+        osf_load = self._tool_wear * self._torque
+
+        feature_vector = np.array([[
+            type_numeric,
+            self._air_temp,
+            self._process_temp,
+            self._rotational_speed,
+            self._torque,
+            self._tool_wear,
+            temp_diff,
+            power,
+            osf_load
+        ]])
+
+        return feature_vector
+
+
+    def _predict_with_lgb(self, feature_vector):
+
+        if self.__lgb_model is not None:
+            feature_2d = np.array(feature_vector).reshape(1, -1)
+            prob = self.__lgb_model.predict(feature_2d)
+            return float(prob[0])
+        return 0.0
+
+        
         
 
 
