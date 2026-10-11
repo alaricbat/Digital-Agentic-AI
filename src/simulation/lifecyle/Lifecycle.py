@@ -15,6 +15,9 @@ from src.utils.Writer import Writer
 
 from src.simulation.ml.AIModule import AIModule
 
+from src.agent_llm.PlanningAgent import PlanningAgent
+from src.agent_llm.KnowledgeAgent import KnowledgeAgent
+
 class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
     def __init__(self,
@@ -41,6 +44,7 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             print(f"⚠️ [AI SYSTEM ERROR]: AI 集成失敗！看一下 {e}")
             self.__lgb_model = None
 
+        self.__planning_agent = PlanningAgent(knowledge_agent=KnowledgeAgent())
 
         self._product_id = product_id
         self._type = ProductType(type)
@@ -233,6 +237,11 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             prob = self._predict_with_lgb(self._extract_ml_feature())
             if prob >= 0.65:
                 self.__writer.write(f"🔮 [AI PREDICTIVE WARNING]: 設備運行異常，請早修改！")
+                repair_log = self.__planning_agent.repair(
+                    lifecycle_instance=self,
+                    ml_prob=prob
+                )
+                self.__writer.write(repair_log)
             
             # 運行中每秒的物理數值失落更新
             self._rotational_speed -= self.__speed_drop_per_sec
