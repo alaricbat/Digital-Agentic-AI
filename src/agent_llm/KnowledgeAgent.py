@@ -47,22 +47,25 @@ class KnowledgeAgent:
         current_power = torque * (speed * 2 * np.pi / 60.0)
         current_osf_load = torque * tool_wear
 
-        if ml_probs.get("OSF", 0) > 0.65 or current_osf_load > (manual["osf_limit"]):
+        if ml_probs > 0.65 or current_osf_load > (manual["osf_limit"]):
             reduction_nm = 12.0 if product_type == ProductType.LOW else (8.0 if product_type == ProductType.MEDIUM else 5.0)
             return {
                 "Action": ActionAgent.STRESS_RELIEF,
                 "Speed_Delta": 0.0,
                 "Torque_Delta": -reduction_nm,
+                "Process_Temp_Delta": 0.0,
                 "Tool_Wear_Delta": 0,
                 "Log": f"🛠️ [KNOWLEDGE ACTION -> OSF]: 結構負荷過高({round(current_osf_load, 1)})，已超越你的預警線({manual["osf_limit"]})！採取【應力釋放改修】，強行削減扭矩 {reduction_nm} Nm。"
             }
         
         if temp_diff < manual["hdf_temp"] and speed < manual["hdf_speed"]:
             boost_rpm = 250.0 if product_type == ProductType.LOW else 150.0
+            temp_compensation = 3.5 if product_type == ProductType.LOW else 2.0
             return {
                 "Action": ActionAgent.COOLING_COMPENSATION,
                 "Speed_Delta": boost_rpm,
                 "Torque_Delta": -2.0,
+                "Process_Temp_Delta": temp_compensation,
                 "Tool_Wear_Delta": 0,
                  "Log": f"🛠️ [KNOWLEDGE ACTION -> HDF]: 溫差過近({round(temp_diff, 2)}K)且主軸低速！採取【熱補償改修】，強制提升轉速 {boost_rpm} rpm 帶動排風散熱。"
             }
@@ -73,6 +76,7 @@ class KnowledgeAgent:
                 "Action": ActionAgent.POWER_STABILIZATION,
                 "Speed_Delta": 0.0,
                 "Torque_Delta": torque_adj,
+                "Process_Temp_Delta": 0.0,
                 "Tool_Wear_Delta": 0,
                 "Log": f"🛠️ [KNOWLEDGE ACTION -> PWF]: 機械功率異常({round(current_power, 1)}W)！採取【功率穩定改修】，動態調節扭矩 {torque_adj} Nm。"
             } 
@@ -82,6 +86,7 @@ class KnowledgeAgent:
                 "Action": ActionAgent.SCHEDULE_TOOL_CHANGE,
                 "Speed_Delta": -150.0,
                 "Torque_Delta": -5.0,
+                "Process_Temp_Delta": 0.0,
                 "Tool_Wear_Delta": -5,
                 "Log": f"🛠️ [KNOWLEDGE ACTION -> TWF]: 刀具超期服役({tool_wear}分鐘)！採取【減速慢行改修】，降速並派發換刀單。"
             }
@@ -90,6 +95,7 @@ class KnowledgeAgent:
                 "Action": "KEEP_RUNNING",
                 "Speed_Delta": 0.0,
                 "Torque_Delta": 0.0,
+                "Process_Temp_Delta": 0.0,
                 "Tool_Wear_Delta": 0,
                 "Log": "🟢 [KNOWLEDGE]: 設備各項物理參數與 ML 評估狀態安全，維持基礎生產。"
             }
