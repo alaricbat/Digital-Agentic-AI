@@ -276,7 +276,7 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
             prob = self._predict_with_lgb(self._extract_ml_feature())
             self.__writer.write(f"🔮 [AI PREDICTIVE VALUE]: 預測故障率：{prob}")
-            if prob >= 0.65:
+            if prob >= 0.45:
                 self.__writer.write(f"🔮 [AI PREDICTIVE WARNING]: 設備運行異常，請早修改！")
                 self._rotational_speed, self._torque, self._process_temp, self._tool_wear, repair_log = self.__planning_agent.repair(
                     product_type=self._type,

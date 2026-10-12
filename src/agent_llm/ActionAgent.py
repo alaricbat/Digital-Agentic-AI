@@ -38,3 +38,8 @@ class ActionAgent:
     '''
     FAIL_SAFE_SNAPSHOT = "安全快照隔離" #RNF
 
+
+    '''
+    強調系統已經把干擾源隔離，並在安全泡泡內繼續跑。
+    '''
+    KEEP_RUNNING = "帶傷運行與電磁隔離" 
