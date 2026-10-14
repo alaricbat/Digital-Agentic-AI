@@ -15,18 +15,20 @@ class SoftmaxRegression:
 
     def fit(self, X, y, C):
 
-
         X = np.array(X)
-        y = np.array(y)
+        y = np.array(y, dtype=np.int64)
 
         y_one_hot = np.eye(C)[y].astype(int)
 
         N = X.shape[0]
         self.w = np.random.rand(X.shape[1], y_one_hot.shape[1])
+        w_old = self.w.copy()
 
         class_counts = np.bincount(y, minlength=C)
         class_counts = np.where(class_counts == 0, 1, class_counts)
         class_weights = N / (C * class_counts) 
+
+        hist_loss = []
 
         for _ in range(self.epoches):
 
@@ -43,13 +45,23 @@ class SoftmaxRegression:
                 batch_weights = class_weights[y_batch_labels].reshape(-1, 1)
 
                 a = self.__softmax(X_batch @ self.w)
-                
+
                 err = (a - y_batch) * batch_weights
                 gradient = (X_batch.T @ err + self.lamda * self.w) / X_batch.shape[0]
-                w_new = self.w - self.learning_rate * gradient
-                if np.linalg.norm(self.w - w_new) / w_new.size < 1e-5:
-                    break
-                self.w = w_new 
+                self.w -= self.learning_rate * gradient
+            hist_loss.append(self.loss(X, y_one_hot))
+            if np.linalg.norm(self.w - w_old) / self.w.size < 1e-5:
+                break
+            w_old = self.w.copy() 
+        return hist_loss, self.w
+
+    def loss(self, X, y):
+        A = self.__softmax(X @ self.w)
+        A = np.clip(A, 1e-15, 1.0 - 1e-15)
+        core_loss = -np.sum(y * np.log(A)) / X.shape[0]
+        reg_loss = 0.5 * self.lamda * np.sum(self.w ** 2) / X.shape[0]
+        return core_loss + reg_loss
+
 
     def predict(self, X):
         X = np.array(X)
