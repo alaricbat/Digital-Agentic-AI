@@ -13,6 +13,10 @@ class SoftmaxRegression:
         self.batch_size = batch_size
         self.learning_rate = learning_rate
 
+    def set_w(self, w):
+        self.w = np.array(w)
+
+
     def fit(self, X, y, C):
 
         X = np.array(X)
@@ -49,13 +53,14 @@ class SoftmaxRegression:
                 err = (a - y_batch) * batch_weights
                 gradient = (X_batch.T @ err + self.lamda * self.w) / X_batch.shape[0]
                 self.w -= self.learning_rate * gradient
-            hist_loss.append(self.loss(X, y_one_hot))
+            hist_loss.append(self.__loss(X, y_one_hot))
             if np.linalg.norm(self.w - w_old) / self.w.size < 1e-5:
                 break
             w_old = self.w.copy() 
         return hist_loss, self.w
 
-    def loss(self, X, y):
+
+    def __loss(self, X, y):
         A = self.__softmax(X @ self.w)
         A = np.clip(A, 1e-15, 1.0 - 1e-15)
         core_loss = -np.sum(y * np.log(A)) / X.shape[0]
@@ -67,6 +72,7 @@ class SoftmaxRegression:
         X = np.array(X)
         probs = self.__softmax(X @ self.w)
         return np.argmax(probs, axis=1)
+    
 
     def __softmax(self, Z):
         '''

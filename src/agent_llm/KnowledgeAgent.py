@@ -56,7 +56,7 @@ class KnowledgeAgent:
                 "Log": "🟢 [KNOWLEDGE]: 設備各項物理參數與 ML 評估狀態安全，維持基礎生產。\n"
             }
 
-        if ml_probs > 0.65 or current_osf_load > (manual["osf_limit"]):
+        if ml_probs > 0.45 or current_osf_load > (manual["osf_limit"]):
             reduction_nm = 12.0 if product_type == ProductType.LOW else (8.0 if product_type == ProductType.MEDIUM else 5.0)
             result["Action"] += " " + ActionAgent.STRESS_RELIEF
             result["Speed_Delta"] += 0.0

@@ -4,7 +4,11 @@ import csv
 import time
 import random
 import numpy as np
+import pandas as pd
 import threading
+import ast
+import json
+from pathlib import Path
 
 import lightgbm as lgb
 
@@ -18,6 +22,8 @@ from src.simulation.state.OperationState import OperationState
 
 from src.agent_llm.PlanningAgent import PlanningAgent
 from src.agent_llm.KnowledgeAgent import KnowledgeAgent
+
+from src.ml_dl.clazz.SoftmaxRegression import SoftmaxRegression
 
 class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
@@ -37,13 +43,42 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
         self.__file_root_log = "src/simulation/logs/"
         self.__lgb_model = None
+        self.__softmax_model = None
 
         try:
             self.__lgb_model = lgb.Booster(model_file='src/ml_dl/model/lgb_model.txt')
             print(f"🤖 [AI SYSTEM]: 集成AI - LightBGM 成功！")
+            
         except Exception as e:
-            print(f"⚠️ [AI SYSTEM ERROR]: AI 集成失敗！看一下 {e}")
+            print(f"⚠️ [AI SYSTEM ERROR][LIGHT BGM]: AI 集成失敗！看一下 {e}")
             self.__lgb_model = None
+
+        try:
+            
+            path = Path("src/ml_dl/model/softmax_model.txt")
+
+            # 讀取舊的 Python Dictionary 格式
+            with path.open("r", encoding="utf-8") as f:
+                content = f.read()
+
+            model_package = ast.literal_eval(content)
+
+            # 重新儲存成合法 JSON
+            with path.open("w", encoding="utf-8") as f:
+                json.dump(model_package, f, ensure_ascii=False, allow_nan=False)
+
+            softmax_w = np.asarray(
+                model_package["weight"],
+                dtype=np.float32
+            )
+
+            self.__softmax_model = SoftmaxRegression()
+            self.__softmax_model.set_w(softmax_w)
+            print(f"🤖 [AI SYSTEM]: 集成AI - Softmax 成功！")
+
+        except Exception as e:
+            print(f"⚠️ [AI SYSTEM ERROR][SOFTMAX]: AI 集成失敗！看一下 {e}")
+            self.__softmax_model = None
 
         self.__planning_agent = PlanningAgent(knowledge_agent=KnowledgeAgent())
 
@@ -274,9 +309,18 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             ]
             file_is_new = not os.path.exists(csv_file_path)
 
-            prob = self._predict_with_lgb(self._extract_ml_feature())
-            self.__writer.write(f"🔮 [AI PREDICTIVE VALUE]: 預測故障率：{prob}")
-            if prob >= 0.45:
+            prob = 0
+            operate_status = 0
+
+            if self.__lgb_model is not None:
+                prob = self._predict_with_lgb(self._extract_ml_lgb_feature())
+                self.__writer.write(f"🔮 [AI PREDICTIVE VALUE][LIGHT BGM]: 預測故障率：{prob}")
+
+            if self.__softmax_model is not None:
+                operate_status = self._predict_with_softmax(self._extract_ml_softmax_feature())
+                self.__writer.write(f"🔮 [AI PREDICTIVE VALUE][SOFTMAX REGRESSION]: 運行狀態：{operate_status}")
+
+            if (prob >= 0.45) or (operate_status > 0):
                 self.__writer.write(f"🔮 [AI PREDICTIVE WARNING]: 設備運行異常，請早修改！")
                 self._rotational_speed, self._torque, self._process_temp, self._tool_wear, repair_log = self.__planning_agent.repair(
                     product_type=self._type,
@@ -360,7 +404,7 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
     def stop(self):
         self._is_running = False
 
-    def _extract_ml_feature(self):
+    def _extract_ml_lgb_feature(self):
 
         type_numeric = 0
         
@@ -389,6 +433,12 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
 
         return feature_vector
 
+    def _extract_ml_softmax_feature(self):
+
+        x_features = ["Air_Tempurature", "Process_Tempurature", "Rotational_Speed", "Torque", "Tool_wear"]
+
+        return x_features
+
 
     def _predict_with_lgb(self, feature_vector):
 
@@ -397,6 +447,20 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             prob = self.__lgb_model.predict(feature_2d)
             return float(prob[0])
         return 0.0
+
+    def _predict_with_softmax(self, feature_vector):
+
+        df = pd.read_csv(f"data/operating/{self._product_id}_data.csv")
+        df["Operation State"] = df["Operation State"].map({"NORMAL": 0, "WARNING": 1, "CRITICAL": 2})
+        X = df[feature_vector]
+        X_min= np.min(X, axis=0)
+        X_max = np.max(X, axis=0)
+        denom = np.where(X_max - X_min == 0, 1.0, X_max - X_min)
+        X_scaled = (X - X_min) / denom
+        operation_state = self.__softmax_model.predict(X_scaled[-1:])[0]
+
+        return operation_state
+
 
         
         
