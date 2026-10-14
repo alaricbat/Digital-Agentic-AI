@@ -8,27 +8,27 @@ class KnowledgeAgent:
     def __init__(self):
         self.__thresholds = {
             ProductType.LOW: {
-                "osf_limit": 11000.0,
-                "hdf_temp": 8.6,
-                "hdf_speed": 1380,
-                "power_min": 3500.0,
-                "power_max": 9000.0,
+                "osf_limit": 9500.0,
+                "hdf_temp": 9.0,
+                "hdf_speed": 1390,
+                "power_min": 3600.0,
+                "power_max": 8800.0,
                 "twf_min": 200
             },
             ProductType.MEDIUM: {
-                "osf_limit": 12000.0,
-                "hdf_temp": 8.6,
-                "hdf_speed": 1380,
-                "power_min": 3500.0,
-                "power_max": 9000.0,
+                "osf_limit": 11200.0,
+                "hdf_temp": 9.0,
+                "hdf_speed": 1390,
+                "power_min": 3600.0,
+                "power_max": 8800.0,
                 "twf_min": 200
             },
             ProductType.HIGH: {
-                "osf_limit": 13000.0,
-                "hdf_temp": 8.6,
-                "hdf_speed": 1380,
-                "power_min": 3500.0,
-                "power_max": 9000.0,
+                "osf_limit": 12500.0,
+                "hdf_temp": 9.0,
+                "hdf_speed": 1390,
+                "power_min": 3600.0,
+                "power_max": 8800.0,
                 "twf_min": 200
             }
         }
@@ -44,7 +44,7 @@ class KnowledgeAgent:
         manual = self.__thresholds.get(product_type)
 
         temp_diff = process_temp - air_temp
-        current_power = torque * (speed * 2 * np.pi / 60.0)
+        current_power = torque * ((speed * 2 * np.pi) / 60.0)
         current_osf_load = torque * tool_wear
 
         result = {
@@ -72,7 +72,7 @@ class KnowledgeAgent:
             result["Speed_Delta"] += boost_rpm
             result["Torque_Delta"] += -2.0
             result["Process_Temp_Delta"] += temp_compensation
-            result["Tool_Wear_Delta"] += 0,
+            result["Tool_Wear_Delta"] += 0
             result["Log"] += f"🛠️ [KNOWLEDGE ACTION -> HDF]: 溫差過近({round(temp_diff, 2)}K)且主軸低速！採取【熱補償改修】，強制提升轉速 {boost_rpm} rpm 帶動排風散熱。\n"
         
         if current_power < manual["power_min"] or current_power > manual["power_max"]:

@@ -2,7 +2,6 @@ import os
 import csv
 
 import time
-import random
 import numpy as np
 import pandas as pd
 import threading
@@ -54,7 +53,7 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             self.__lgb_model = None
 
         try:
-            
+
             path = Path("src/ml_dl/model/softmax_model.txt")
 
             # 讀取舊的 Python Dictionary 格式
@@ -136,27 +135,8 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             self.__writer.write(f"🟢 [NORMAL][TWF]: 刀具處於健康或正常的消耗階段，累計加工時間（Tool Wear）在安全壽命範圍內（未達變換閾值）。")
             state = OperationState.NORMAL
         elif 200 <= self._tool_wear <= 240:
-            if self._type == ProductType.LOW:
-                 # 3.5% 高風險
-                drop_chance = 0.0350 
-            elif self._type == ProductType.MEDIUM:
-                 # 1.37% 標準風險
-                drop_chance = 0.0137 
-            elif self._type == ProductType.HIGH:
-                 # 0.5% 低風險
-                drop_chance = 0.0050
-            
-            # 執行每秒降落抽籤
-            if random.random() < drop_chance:
-                self._failure_modes[FailureMode.TWF] = 1
-                self._machine_failure = 1
-                self.__writer.write(f"🚨 [CRITICAL][TWF]: 設備崩潰當機！[{self._type}級] 刀具在第 {self._tool_wear} 分鐘發生 TWF 斷裂！")
-                self.__writer.write(f"🚨 [CRITICAL][TWF]: 刀具壽命耗盡。 刀具累計加工時間已經達到或超過設定的磨損極限（通常在 200 到 240 分鐘之間），必須停機更換刀具，否則會損壞工件。")
-                state = OperationState.CRITICAL
-            else:
-                self.__writer.write(f"⚠️ [WARNING][TWF]: [老化高危區] [{self._type}級] 磨損: {self._tool_wear} 分鐘 (本秒安全渡過)")
-                state = OperationState.WARNING
-
+            self.__writer.write(f"⚠️ [WARNING][TWF]: [老化高危區] [{self._type}級] 磨損: {self._tool_wear} 分鐘 (本秒安全渡過)")
+            state = OperationState.WARNING
         elif self._tool_wear > 240:
             self._failure_modes[FailureMode.TWF] = 1
             self._machine_failure = 1
@@ -347,6 +327,8 @@ class Lifecycle(LifeCycleBehavior, AIModule, threading.Thread):
             elif self._type == ProductType.HIGH:
                 # High 等級最耐磨，每秒僅老化 1 分鐘
                 self._tool_wear += 1
+
+            self.__writer.write(f"[CURRENT OPERATING]: <speed>: {self._rotational_speed} <process temp>: {self._process_temp} <torque>: {self._torque} <tool_wear>: {self._tool_wear}")
 
             twf_state = self.update_twf()
 

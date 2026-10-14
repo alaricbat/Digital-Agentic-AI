@@ -1,12 +1,8 @@
 # Digital Agentic AI
 
-A Python-based predictive maintenance and digital-twin simulation project that combines an industrial asset lifecycle model with AI-assisted reasoning and rule-based maintenance actions.
+Digital Agentic AI is a Python-based predictive maintenance simulator that combines a machine lifecycle model, AI-based fault scoring, and rule-driven operational decisions for industrial equipment monitoring.
 
-This repository explores how an "agentic" workflow can monitor equipment health, detect failure modes, trigger corrective actions, and log diagnostic decisions using the AI4I 2020 Predictive Maintenance dataset.
-
-## Overview
-
-The project models manufacturing equipment as a simulated production asset with multiple failure conditions:
+The project uses the AI4I 2020 Predictive Maintenance dataset to model equipment behavior under normal operation and multiple simulated failure modes:
 
 - TWF: Tool Wear Failure
 - HDF: Heat Dissipation Failure
@@ -14,18 +10,19 @@ The project models manufacturing equipment as a simulated production asset with 
 - OSF: Over-Stress Failure
 - RNF: Random Failure
 
-A lightweight AI component loads a LightGBM model from `src/ml_dl/model/lgb_model.txt`, while a knowledge/planning agent interprets sensor conditions and applies corrective changes such as torque reduction, speed adjustment, cooling compensation, and tool replacement scheduling.
+It also includes a lightweight agent layer that evaluates operating conditions, applies corrective actions, and writes human-readable maintenance logs.
 
-## Key Features
+## Project goals
 
-- Simulated production asset lifecycle
-- Predictive maintenance logic based on sensor readings
-- AI model integration using LightGBM
-- Failure-mode monitoring and decision rules
-- Human-readable runtime logs for diagnostics
-- Dataset-driven experimentation with realistic operating conditions
+This repository demonstrates an "agentic" workflow for manufacturing intelligence, including:
 
-## Repository Structure
+- simulating production assets over a lifecycle
+- interpreting sensor values and process conditions
+- loading ML model artifacts for anomaly/failure prediction
+- applying operational rule checks for risk mitigation
+- recording diagnostics and maintenance actions in log files
+
+## Repository structure
 
 ```text
 Digital-Agentic-AI/
@@ -42,6 +39,11 @@ Digital-Agentic-AI/
 │   │   ├── ActionAgent.py
 │   │   ├── KnowledgeAgent.py
 │   │   └── PlanningAgent.py
+│   ├── ml_dl/
+│   │   ├── clazz/
+│   │   ├── model/
+│   │   ├── LightBGM.ipynb
+│   │   └── SoftmaxRegression.ipynb
 │   ├── optimization/
 │   │   ├── mathematical.py
 │   │   └── scheduler.py
@@ -51,75 +53,80 @@ Digital-Agentic-AI/
 │   │   ├── logs/
 │   │   ├── ml/
 │   │   └── state/
-│   ├── ml_dl/
-│   │   └── model/
 │   └── utils/
 │       └── Writer.py
+├── .gitignore
 ├── main.py
 ├── README.md
-└── .gitignore
+└── requirements.txt (if added later)
 ```
 
-## Dataset
+## Data and modeling
 
-The project uses the AI4I 2020 Predictive Maintenance Dataset, which includes operational and failure-related signals such as:
+The system reads operating data from `data/raw/ai4i2020.csv` and builds simulated `ProductionAsset` objects from the row values, including:
 
-- Air temperature
-- Process temperature
-- Rotational speed
-- Torque
-- Tool wear
-- Machine failure indicator
-- Failure mode flags
+- air temperature
+- process temperature
+- rotational speed
+- torque
+- tool wear
+- machine failure flag
+- failure mode indicators
 
-These values are loaded from the raw dataset in `data/raw/ai4i2020.csv` and used to create simulated assets.
+The project loads model artifacts from `src/ml_dl/model/` and combines them with threshold-based decision rules in the agent layer.
 
 ## Prerequisites
 
-Make sure Python 3.10+ is installed.
+- Python 3.10+
+- pip
 
-Then install the required packages:
+Install the dependencies:
 
 ```bash
 pip install pandas numpy lightgbm
 ```
 
-## Quick Start
+## Quick start
 
-Run the main simulation entry point:
+From the repository root, run:
 
 ```bash
-python main.py
+python3 main.py
 ```
 
-The program loads a subset of records from the dataset, creates `ProductionAsset` instances, and runs the lifecycle logic to simulate equipment behavior.
+This entry point loads a subset of the dataset, creates `ProductionAsset` instances, and runs the lifecycle simulation. The simulator emits AI integration messages and maintenance diagnostics while processing the assets.
 
-## Example Runtime Flow
+## Example runtime flow
 
-1. Read product and machine data from the dataset
+1. Load equipment data from the raw dataset
 2. Instantiate production assets
-3. Load the LightGBM model
-4. Evaluate sensor conditions and failure likelihood
-5. Apply rule-based corrective maintenance plans
-6. Write operational logs for each asset
+3. Initialize ML model components
+4. Evaluate risk and operating parameters
+5. Trigger corrective actions when thresholds are exceeded
+6. Save operational logs under `src/simulation/logs/`
 
 ## Notes
 
-This project is best understood as an experimental AI-driven maintenance simulator. The code combines data-driven ML and rule-based decision logic to demonstrate an agentic production-monitoring workflow.
+This project is intended as an experimental industrial AI and digital-twin prototype. It blends:
 
-It is a useful starting point for:
+- data-driven ML signals
+- rule-based maintenance logic
+- agent-style decision planning
+- operational simulation of equipment aging and failure events
+
+Potential use cases include:
 
 - predictive maintenance experiments
-- industrial digital twin prototypes
-- AI + operations research demos
-- teaching fault diagnosis and decision support systems
+- industrial monitoring demos
+- AI + operations decision systems
+- teaching fault diagnosis and maintenance planning
 
-## Future Directions
+## Future directions
 
-Potential extensions include:
+Possible enhancements include:
 
-- REST API and dashboard UI
-- richer optimization/scheduling layer
-- more robust model training pipeline
-- persistent storage for historical predictions
-- deployment to a real manufacturing scenario
+- a REST API or dashboard interface
+- richer optimization and scheduling modules
+- expanded model training pipelines
+- persistent historical analytics storage
+- deployment into more realistic manufacturing scenarios
