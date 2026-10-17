@@ -130,3 +130,7 @@ Possible enhancements include:
 - expanded model training pipelines
 - persistent historical analytics storage
 - deployment into more realistic manufacturing scenarios
+
+## Notion documentation
+
+See [docs/NOTION_DOCUMENTATION.md](docs/NOTION_DOCUMENTATION.md) for a Notion-ready project overview, current architecture and capabilities, monitoring requirements, LLM/deep-learning/RL upgrade strategy, roadmap, and suggested Notion workspace structure.
